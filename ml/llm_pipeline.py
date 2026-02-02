@@ -106,13 +106,15 @@ class VLMReporter:
             try:
                 from transformers import AutoModelForCausalLM, AutoTokenizer
                 print(f"[INFO] Loading VLM: {model_id}...")
+                
+                device = "cuda" if torch.cuda.is_available() else "cpu"
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_id, 
                     trust_remote_code=True, 
-                    revision=revision,
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-                    device_map={"": "cuda" if torch.cuda.is_available() else "cpu"}
-                )
+                    revision=revision
+                ).to(device)
+                
+                print(f"[DEBUG] VLM Model Type: {type(self.model)}")
                 self.tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
                 print("[INFO] VLM Loaded successfully.")
             except Exception as e:
