@@ -402,7 +402,7 @@ textarea {
 
 .chip:hover {
     border-color: var(--primary-color);
-    background-color: #000;
+    background-color: var(--bg-color);
 }
 
 .typing-indicator {
