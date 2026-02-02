@@ -11,7 +11,7 @@ app = FastAPI(title="Health Data Analysis AI Assistant")
 
 # Initialize Pipeline (Mock by default for local dev)
 # In production, set mock_llm=False and provide model_path
-pipeline = HDAPipeline(model_path="checkpoints/best_model.pth", mock_llm=True)
+pipeline = HDAPipeline(model_path="checkpoints/best_model.pth", mock_llm=False)
 
 # Directories
 UPLOAD_DIR = "static/uploads"
@@ -32,38 +32,43 @@ async def chat_endpoint(message: str = Form(...), context: str = Form("")):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/analyze")
 async def analyze_endpoint(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image.")
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid file type"}
+        )
 
-    # Save uploaded file
     file_ext = file.filename.split(".")[-1]
     unique_filename = f"{uuid.uuid4()}.{file_ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    
+
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-        
-    # Generate Heatmap Path
-    heatmap_filename = f"heatmap_{unique_filename}"
-    heatmap_path = os.path.join(UPLOAD_DIR, heatmap_filename)
-    
+
     try:
-        # Run Analysis
-        result = pipeline.analyze_image(file_path, heatmap_path)
-        
-        # Construct URLs for frontend
-        result["heatmap_url"] = f"/static/uploads/{heatmap_filename}"
-        result["original_url"] = f"/static/uploads/{unique_filename}"
-        
-        return JSONResponse(result)
-        
+        result = pipeline.analyze_image(file_path)
+
+        return JSONResponse(
+            content={
+                "classification": {
+                    "class": result["classification"]["class"],
+                    "confidence": float(result["classification"]["confidence"])
+                },
+                "advice": result["advice"],
+                "original_url": f"/static/uploads/{unique_filename}"
+            }
+        )
+
     except Exception as e:
-        # Cleanup
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        print("ANALYSIS ERROR:", e)
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
 
 if __name__ == "__main__":
     import uvicorn

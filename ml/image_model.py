@@ -67,10 +67,10 @@ class HDAImgClassifier:
         self.activations = None
         
         def backward_hook(module, grad_input, grad_output):
-            self.gradients = grad_output[0]
-            
+            self.gradients = grad_output[0] if grad_output[0] is not None else None
+
         def forward_hook(module, input, output):
-            self.activations = output
+            self.activations = output if output is not None else None
             
         # Register hooks on the last convolutional layer of EfficientNet-B0 features
         # features[8] is the last block usually. Let's inspect efficientnet structure.
@@ -99,53 +99,36 @@ class HDAImgClassifier:
         }
 
     def generate_heatmap(self, image_path: str, save_path: str):
-        """
-        Generate Grad-CAM heatmap.
-        """
-        # 1. Forward Pass to get gradients
         tensor, original_image = self.preprocess(image_path)
         self.model.zero_grad()
         output = self.model(tensor)
-        
-        # Get max class score
+
         target_class_idx = output.argmax(dim=1).item()
         score = output[:, target_class_idx]
-        
-        # 2. Backward pass
+
         score.backward()
-        
-        # 3. Generate Map
-        gradients = self.gradients.data.cpu().numpy()[0] # [C, H, W]
-        activations = self.activations.data.cpu().numpy()[0] # [C, H, W]
-        
-        # Global Average Pooling on gradients
-        weights = np.mean(gradients, axis=(1, 2))
-        
-        # Weigh activations
+
+        if self.gradients is None or self.activations is None:
+            raise RuntimeError("GradCAM failed: hooks not triggered.")
+
+        gradients = self.gradients.detach().cpu().numpy()[0]
+        activations = self.activations.detach().cpu().numpy()[0]
+
+        weights = np.mean(gradients, axis=(1,2))
         cam = np.zeros(activations.shape[1:], dtype=np.float32)
         for i, w in enumerate(weights):
             cam += w * activations[i]
-            
-        # ReLU
+
         cam = np.maximum(cam, 0)
-        
-        # Resize to original image size
         img_w, img_h = original_image.size
         cam = cv2.resize(cam, (img_w, img_h))
-        
-        # Normalize
         cam = cam - np.min(cam)
         cam = cam / (np.max(cam) + 1e-8)
-        
-        # Colorize
-        heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
+
+        heatmap = cv2.applyColorMap(np.uint8(255*cam), cv2.COLORMAP_JET)
         heatmap = cv2.cvtColor(heatmap, cv2.COLOR_BGR2RGB)
-        
-        # Overlay
         original_np = np.array(original_image)
-        superimposed_img = heatmap * 0.4 + original_np * 0.6
-        superimposed_img = np.clip(superimposed_img, 0, 255).astype(np.uint8)
-        
-        # Save
+        superimposed_img = np.clip(heatmap*0.4 + original_np*0.6, 0, 255).astype(np.uint8)
+
         Image.fromarray(superimposed_img).save(save_path)
         return save_path

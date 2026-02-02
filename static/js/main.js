@@ -71,64 +71,67 @@ async function sendMessage() {
 }
 
 async function uploadImage(file) {
-    // 1. Add User Message (Image Preview)
     const reader = new FileReader();
-    reader.onload = function (e) {
-        const imgHtml = `<img src="${e.target.result}" style="max-width: 200px; border-radius: 8px;">`;
-        addMessage(imgHtml, 'user');
+    reader.onload = e => {
+        addMessage(
+            `<img src="${e.target.result}" style="max-width:200px;border-radius:8px;">`,
+            'user'
+        );
     };
     reader.readAsDataURL(file);
 
-    // 2. Show Processing Indicator
     const typingId = showTypingIndicator("Analyzing medical image...");
 
     try {
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append("file", file);
 
-        const response = await fetch('/api/analyze', {
-            method: 'POST',
+        const response = await fetch("/api/analyze", {
+            method: "POST",
             body: formData
         });
-        const data = await response.json();
+
+        const text = await response.text();
+
+        if (!response.ok) {
+            console.error("Backend error:", text);
+            throw new Error("API error");
+        }
+
+        const data = JSON.parse(text);
 
         removeTypingIndicator(typingId);
 
-        // Update Context
-        context = `Previous diagnosis: ${data.classification.class} (${(data.classification.confidence * 100).toFixed(1)}%). Advice given: ${data.advice}`;
+        const safeId = data.original_url.replaceAll("/", "_"); // Just use original_url for ID generation if needed, or remove safeId if unused elsewhere. keeping it for ID uniqueness if useful.
 
-        // 3. Display Result Card
         const resultHtml = `
-            <div class="result-card">
-                <h5>Analysis Result</h5>
-                <p><strong>Detected Class:</strong> ${data.classification.class}</p>
-                <p><strong>Confidence:</strong> ${(data.classification.confidence * 100).toFixed(2)}%</p>
-                
-                <div style="position: relative; max-width: 300px; margin-top: 10px;">
-                    <img src="${data.original_url}" id="img-${data.heatmap_url}" style="width: 100%; border-radius: 8px;">
-                    <img src="${data.heatmap_url}" id="heat-${data.heatmap_url}" style="width: 100%; border-radius: 8px; position: absolute; top: 0; left: 0; opacity: 0; transition: opacity 0.5s;">
-                </div>
-                
-                <div class="heatmap-toggle-btn" onclick="toggleHeatmap('${data.heatmap_url}')">
-                    <i class="fa-solid fa-layer-group"></i> Show Gradient Heatmap (Segmentation)
-                </div>
+        <div class="result-card">
+            <h5>Analysis Result</h5>
+            <p><b>Detected Class:</b> ${data.classification.class}</p>
+            <p><b>Confidence:</b> ${(data.classification.confidence * 100).toFixed(2)}%</p>
 
-                <hr style="opacity: 0.1">
-                <div class="markdown-body">${marked.parse(data.advice)}</div>
+            <div style="position:relative;max-width:300px">
+                <img src="${data.original_url}" id="img-${safeId}" style="width:100%">
             </div>
+
+            <hr>
+            <div class="markdown-body">${marked.parse(data.advice)}</div>
+        </div>
         `;
 
-        addMessage(resultHtml, 'ai', true);
+        addMessage(resultHtml, "ai", true);
 
-    } catch (error) {
+    } catch (err) {
         removeTypingIndicator(typingId);
-        addMessage("Image analysis failed. Please ensure it is a valid medical image.", 'ai');
-        console.error(error);
+        console.error(err);
+        addMessage("❌ Image analysis failed.", "ai");
     }
 
-    // Reset file input
     imageUpload.value = "";
 }
+
+// toggleHeatmap functions removed
+
 
 function addMessage(content, sender, isHtml = false) {
     const div = document.createElement('div');
@@ -176,15 +179,4 @@ function scrollToBottom() {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function toggleHeatmap(id) {
-    const heatmap = document.getElementById(`heat-${id}`);
-    const btn = event.currentTarget; // The clicked button
 
-    if (heatmap.style.opacity === "0") {
-        heatmap.style.opacity = "1";
-        btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Hide Heatmap';
-    } else {
-        heatmap.style.opacity = "0";
-        btn.innerHTML = '<i class="fa-solid fa-layer-group"></i> Show Gradient Heatmap (Segmentation)';
-    }
-}
