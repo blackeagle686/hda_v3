@@ -68,11 +68,20 @@ async function sendMessage() {
         removeTypingIndicator(typingId);
         addMessage(data.response, 'ai');
 
+        if (data.history) {
+            // Optional: update history in sidebar if we were fetching it dynamically
+        }
+
     } catch (error) {
         removeTypingIndicator(typingId);
         addMessage("Sorry, something went wrong. Please try again.", 'ai');
         console.error(error);
     }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
 }
 
 async function uploadImage(file) {

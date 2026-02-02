@@ -38,6 +38,75 @@ body {
     flex-direction: column;
     padding: 1rem;
     flex-shrink: 0;
+    transition: width 0.3s ease;
+    overflow: hidden;
+}
+
+.sidebar.collapsed {
+    width: 80px;
+    padding: 1rem 0.5rem;
+}
+
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .new-chat-btn span,
+.sidebar.collapsed .hist-label,
+.sidebar.collapsed .history-item span,
+.sidebar.collapsed .user-info {
+    display: none;
+}
+
+.sidebar.collapsed .logo-area {
+    justify-content: center;
+    padding-left: 5px;
+}
+
+.sidebar.collapsed .new-chat-btn {
+    justify-content: center;
+}
+
+.sidebar.collapsed .history-item {
+    justify-content: center;
+}
+
+.sidebar.collapsed .user-profile {
+    justify-content: center;
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 5px;
+    margin-left: auto;
+    transition: 0.2s;
+}
+
+.toggle-btn:hover {
+    color: #fff;
+}
+
+.sidebar.collapsed .toggle-btn {
+    margin-left: 0;
+    margin-top: 10px;
+    display: none;
+    /* or keep it? Let's keep it but move it or style it. 
+                   Actually, if I hide it, how to expand? 
+                   I should restructure logo-area slightly.
+                   */
+}
+
+/* Fix for toggle button in collapsed mode */
+.sidebar.collapsed .logo-area {
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 1rem;
+}
+
+.sidebar.collapsed .toggle-btn {
+    display: block;
+    /* Ensure it's visible */
 }
 
 .logo-area {
