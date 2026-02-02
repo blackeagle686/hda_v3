@@ -8,3 +8,4 @@ accelerate
 pillow
 numpy
 opencv-python
+einops

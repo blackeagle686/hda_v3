@@ -16,6 +16,13 @@ pipeline = HDAPipeline(model_path="checkpoints/best_model.pth", mock_llm=False)
 # Directories
 UPLOAD_DIR = "static/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+LABEL_MAP = {
+    'colon_aca': 'Colon Adenocarcinoma',
+    'colon_n': 'Colon Normal',
+    'lung_aca': 'Lung Adenocarcinoma',
+    'lung_n': 'Lung Normal',
+    'lung_scc': 'Lung Squamous Cell Carcinoma'
+}
 
 # Mount Static Files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -51,14 +58,16 @@ async def analyze_endpoint(file: UploadFile = File(...)):
     try:
         result = pipeline.analyze_image(file_path)
 
+        mapped_class = LABEL_MAP.get(result["classification"]["class"], "Unknown")
+
         return JSONResponse(
             content={
                 "classification": {
-                    "class": result["classification"]["class"],
+                    "class": mapped_class,
                     "confidence": float(result["classification"]["confidence"])
                 },
                 "advice": result["advice"],
-                "original_url": f"/static/uploads/{unique_filename}"
+                "original_url": f"/static/uploads/{unique_filename}",
             }
         )
 

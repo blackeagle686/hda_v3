@@ -87,3 +87,73 @@ class LLMResponder:
                 "I am ready to help you. Please upload a medical image or ask a specific question. "
                 f"(You said: {user_text})"
             )
+
+
+class VLMReporter:
+    def __init__(self, model_id: str = "vikhyatk/moondream2", revision: str = "2024-03-06", mock: bool = False):
+        """
+        Initialize the Vision-Language Model Responder.
+        Args:
+            model_id: HuggingFace model repo id.
+            revision: Specific revision to ensure stability.
+            mock: If True, uses dummy responses.
+        """
+        self.mock = mock
+        self.model = None
+        self.tokenizer = None
+        
+        if not self.mock:
+            try:
+                from transformers import AutoModelForCausalLM, AutoTokenizer
+                print(f"[INFO] Loading VLM: {model_id}...")
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_id, 
+                    trust_remote_code=True, 
+                    revision=revision,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    device_map={"": "cuda" if torch.cuda.is_available() else "cpu"}
+                )
+                self.tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
+                print("[INFO] VLM Loaded successfully.")
+            except Exception as e:
+                print(f"[WARN] Failed to load VLM ({e}). Switching to MOCK mode.")
+                self.mock = True
+        else:
+            print("[INFO] VLM initialized in MOCK mode.")
+
+    def generate_report(self, image_path: str, classification_result: dict) -> str:
+        """
+        Generate a detailed report based on the image and classification context.
+        """
+        if self.mock:
+            return self._mock_report(classification_result)
+
+        try:
+            from PIL import Image
+            image = Image.open(image_path).convert("RGB")
+            
+            detected_class = classification_result.get('class', 'Unknown')
+            confidence = classification_result.get('confidence', 0.0) * 100
+            
+            prompt = (
+                f"Describe this medical image in detail. "
+                f"It has been classified as {detected_class} with {confidence:.1f}% confidence. "
+                f"Explain the visual features that might support this diagnosis and suggest next steps."
+            )
+            
+            enc_image = self.model.encode_image(image)
+            answer = self.model.answer_question(enc_image, prompt, self.tokenizer)
+            
+            return answer
+            
+        except Exception as e:
+            print(f"[ERROR] VLM generation failed: {e}")
+            return f"Error generating report: {str(e)}"
+
+    def _mock_report(self, classification_result: dict) -> str:
+        cls = classification_result.get('class', 'Unknown')
+        return (
+            f"[MOCK VLM REPORT] The image appears to show characteristics consistent with {cls}. "
+            "Visual density patterns suggest potential abnormalities requiring further clinical correlation. "
+            "(This is a mock response as the VLM is not loaded.)"
+        )
