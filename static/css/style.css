@@ -1,14 +1,14 @@
 :root {
-    /* New Palette: #2B2E4A (Deep Blue), #E84545 (Red), #903749 (Maroon), #53354A (Purple) */
-    --bg-color: #2B2E4A;
-    --sidebar-bg: #53354A;
+    /* New Palette: #000000 (Bg), #52057B (Deep Purple), #892CDC (Vibrant Purple), #BC6FF1 (Lavender) */
+    --bg-color: #000000;
+    --sidebar-bg: #52057B;
     --sidebar-text: #ffffff;
-    --chat-bg: #2B2E4A;
-    --primary-color: #E84545;
-    --primary-hover: #903749;
-    --user-msg-bg: #53354A;
-    --ai-msg-bg: #903749;
-    --border-color: #53354A;
+    --chat-bg: #000000;
+    --primary-color: #892CDC;
+    --primary-hover: #BC6FF1;
+    --user-msg-bg: #52057B;
+    --ai-msg-bg: #1a1a1a;
+    --border-color: #52057B;
     --text-primary: #ffffff;
     --text-secondary: #cccccc;
     --font-sans: 'Plus Jakarta Sans', sans-serif;
