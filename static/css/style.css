@@ -1,16 +1,16 @@
 :root {
-    /* New Palette: #000000 (Bg), #52057B (Deep Purple), #892CDC (Vibrant Purple), #BC6FF1 (Lavender) */
-    --bg-color: #000000;
-    --sidebar-bg: #52057B;
-    --sidebar-text: #ffffff;
-    --chat-bg: #000000;
-    --primary-color: #892CDC;
-    --primary-hover: #BC6FF1;
-    --user-msg-bg: #52057B;
-    --ai-msg-bg: #1a1a1a;
-    --border-color: #52057B;
-    --text-primary: #ffffff;
-    --text-secondary: #cccccc;
+    /* New Color Palette */
+    --bg-color: #FAF3E1;         /* Light cream background */
+    --sidebar-bg: #F5E7C6;       /* Sidebar background */
+    --sidebar-text: #222222;     /* Sidebar text */
+    --chat-bg: #FAF3E1;          /* Main chat background */
+    --primary-color: #FA8112;    /* Buttons, highlights, accents */
+    --primary-hover: #FA6F00;    /* Slightly darker orange on hover */
+    --user-msg-bg: #FA8112;      /* User message bubbles */
+    --ai-msg-bg: #F5E7C6;        /* AI message bubbles */
+    --border-color: #FA8112;     /* Borders / dividers */
+    --text-primary: #222222;     /* Primary text */
+    --text-secondary: #555555;   /* Secondary / subtle text */
     --font-sans: 'Plus Jakarta Sans', sans-serif;
 }
 
