@@ -1,13 +1,14 @@
 :root {
-    --bg-color: #000000;
-    --sidebar-bg: #3D0000;
+    /* New Palette: #2B2E4A (Deep Blue), #E84545 (Red), #903749 (Maroon), #53354A (Purple) */
+    --bg-color: #2B2E4A;
+    --sidebar-bg: #53354A;
     --sidebar-text: #ffffff;
-    --chat-bg: #000000;
-    --primary-color: #950101;
-    --primary-hover: #FF0000;
-    --user-msg-bg: #1a1a1a;
-    --ai-msg-bg: #3D0000;
-    --border-color: #3D0000;
+    --chat-bg: #2B2E4A;
+    --primary-color: #E84545;
+    --primary-hover: #903749;
+    --user-msg-bg: #53354A;
+    --ai-msg-bg: #903749;
+    --border-color: #53354A;
     --text-primary: #ffffff;
     --text-secondary: #cccccc;
     --font-sans: 'Plus Jakarta Sans', sans-serif;
