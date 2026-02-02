@@ -338,7 +338,7 @@ textarea {
 }
 
 .attach-btn:hover {
-    background-color: var(--primary-hover);
+    background-color: var(--bg-color);
     color: var(--text-primary);
 }
 
@@ -349,7 +349,7 @@ textarea {
 }
 
 .send-btn:hover {
-    background-color: var(--primary-hover);
+    background-color: var(--bg-color);
 }
 
 .send-btn:disabled {
