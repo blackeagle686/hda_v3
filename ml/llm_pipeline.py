@@ -1,6 +1,7 @@
 from transformers import pipeline
 import torch
 import os
+from typing import Dict
 
 class LLMResponder:
     def __init__(self, model_name: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0", mock: bool = False):
@@ -88,74 +89,107 @@ class LLMResponder:
                 f"(You said: {user_text})"
             )
 
-
 class VLMReporter:
-    def __init__(self, model_id: str = "vikhyatk/moondream2", revision: str = "2024-03-06", mock: bool = False):
+    def __init__(
+        self,
+        model_id: str = "vikhyatk/moondream2",
+        revision: str = "2024-03-06",
+        mock: bool = False
+    ):
         """
-        Initialize the Vision-Language Model Responder.
-        Args:
-            model_id: HuggingFace model repo id.
-            revision: Specific revision to ensure stability.
-            mock: If True, uses dummy responses.
+        Initialize the Vision-Language Model Reporter (MoonDream2).
         """
         self.mock = mock
         self.model = None
         self.tokenizer = None
-        
-        if not self.mock:
-            try:
-                from transformers import AutoModelForCausalLM, AutoTokenizer
-                print(f"[INFO] Loading VLM: {model_id}...")
-                
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    model_id, 
-                    trust_remote_code=True, 
-                    revision=revision
-                ).to(device)
-                
-                print(f"[DEBUG] VLM Model Type: {type(self.model)}")
-                self.tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
-                print("[INFO] VLM Loaded successfully.")
-            except Exception as e:
-                print(f"[WARN] Failed to load VLM ({e}). Switching to MOCK mode.")
-                self.mock = True
-        else:
-            print("[INFO] VLM initialized in MOCK mode.")
 
-    def generate_report(self, image_path: str, classification_result: dict) -> str:
+        if self.mock:
+            print("[INFO] VLM initialized in MOCK mode.")
+            return
+
+        try:
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+
+            print(f"[INFO] Loading VLM: {model_id}")
+
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            dtype = torch.float16 if self.device == "cuda" else torch.float32
+
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                trust_remote_code=True,
+                revision=revision,
+                torch_dtype=dtype
+            ).to(self.device)
+
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_id,
+                revision=revision,
+                trust_remote_code=True
+            )
+
+            assert hasattr(self.model, "encode_image"), "Model missing encode_image"
+            assert hasattr(self.model, "answer_question"), "Model missing answer_question"
+
+            self.model.eval()
+
+            print("[INFO] VLM loaded successfully.")
+            print(f"[DEBUG] Device: {self.device}, Dtype: {dtype}")
+
+        except Exception as e:
+            print(f"[WARN] Failed to load VLM ({e}). Switching to MOCK mode.")
+            self.mock = True
+
+    # ------------------------------------------------------------------
+
+    def generate_report(self, image_path: str, classification_result: Dict) -> str:
         """
-        Generate a detailed report based on the image and classification context.
+        Generate a medical-style report from an image + classifier context.
         """
         if self.mock:
             return self._mock_report(classification_result)
 
         try:
             from PIL import Image
+
             image = Image.open(image_path).convert("RGB")
-            
-            detected_class = classification_result.get('class', 'Unknown')
-            confidence = classification_result.get('confidence', 0.0) * 100
-            
+
+            detected_class = classification_result.get("class", "Unknown")
+            confidence = classification_result.get("confidence", 0.0) * 100
+
             prompt = (
-                f"Describe this medical image in detail. "
-                f"It has been classified as {detected_class} with {confidence:.1f}% confidence. "
-                f"Explain the visual features that might support this diagnosis and suggest next steps."
+                "You are a medical imaging assistant.\n\n"
+                f"The image was classified as '{detected_class}' "
+                f"with {confidence:.1f}% confidence.\n\n"
+                "Describe the visual features in the image that support this classification. "
+                "Mention relevant patterns, structures, or abnormalities, "
+                "and suggest appropriate next clinical steps.\n"
+                "Be concise and medically grounded."
             )
-            
-            enc_image = self.model.encode_image(image)
-            answer = self.model.answer_question(enc_image, prompt, self.tokenizer)
-            
-            return answer
-            
+
+            with torch.no_grad():
+                enc_image = self.model.encode_image(image)
+
+                answer = self.model.answer_question(
+                    enc_image,
+                    prompt,
+                    self.tokenizer
+                )
+
+            return answer.strip()
+
         except Exception as e:
             print(f"[ERROR] VLM generation failed: {e}")
-            return f"Error generating report: {str(e)}"
+            return f"Error generating report: {e}"
 
-    def _mock_report(self, classification_result: dict) -> str:
-        cls = classification_result.get('class', 'Unknown')
+    # ------------------------------------------------------------------
+
+    def _mock_report(self, classification_result: Dict) -> str:
+        cls = classification_result.get("class", "Unknown")
         return (
-            f"[MOCK VLM REPORT] The image appears to show characteristics consistent with {cls}. "
-            "Visual density patterns suggest potential abnormalities requiring further clinical correlation. "
-            "(This is a mock response as the VLM is not loaded.)"
+            f"[MOCK VLM REPORT]\n"
+            f"The image demonstrates visual patterns consistent with {cls}. "
+            "Observed tissue characteristics may warrant further histopathological "
+            "correlation and specialist review.\n\n"
+            "(Mock response – Vision-Language Model not loaded.)"
         )
