@@ -89,6 +89,12 @@ class LLMResponder:
                 f"(You said: {user_text})"
             )
 
+import torch
+from typing import Dict
+from PIL import Image
+from transformers import AutoModel, AutoTokenizer
+
+
 class VLMReporter:
     def __init__(
         self,
@@ -96,9 +102,6 @@ class VLMReporter:
         revision: str = "2024-03-06",
         mock: bool = False
     ):
-        """
-        Initialize the Vision-Language Model Reporter (MoonDream2).
-        """
         self.mock = mock
         self.model = None
         self.tokenizer = None
@@ -108,14 +111,13 @@ class VLMReporter:
             return
 
         try:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
-
-            print(f"[INFO] Loading VLM: {model_id}")
+            print(f"[INFO] Loading MoonDream VLM: {model_id}")
 
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             dtype = torch.float16 if self.device == "cuda" else torch.float32
 
-            self.model = AutoModelForCausalLM.from_pretrained(
+            # ✅ IMPORTANT FIX: AutoModel NOT AutoModelForCausalLM
+            self.model = AutoModel.from_pretrained(
                 model_id,
                 trust_remote_code=True,
                 revision=revision,
@@ -128,48 +130,42 @@ class VLMReporter:
                 trust_remote_code=True
             )
 
-            assert hasattr(self.model, "encode_image"), "Model missing encode_image"
-            assert hasattr(self.model, "answer_question"), "Model missing answer_question"
+            # 🔒 Hard validation
+            if not hasattr(self.model, "encode_image"):
+                raise RuntimeError("encode_image not found – wrong model class loaded")
+
+            if not hasattr(self.model, "answer_question"):
+                raise RuntimeError("answer_question not found – wrong model class loaded")
 
             self.model.eval()
 
-            print("[INFO] VLM loaded successfully.")
-            print(f"[DEBUG] Device: {self.device}, Dtype: {dtype}")
+            print("[INFO] MoonDream VLM loaded successfully")
 
         except Exception as e:
-            print(f"[WARN] Failed to load VLM ({e}). Switching to MOCK mode.")
+            print(f"[WARN] VLM failed to load ({e}) → MOCK mode")
             self.mock = True
 
     # ------------------------------------------------------------------
 
     def generate_report(self, image_path: str, classification_result: Dict) -> str:
-        """
-        Generate a medical-style report from an image + classifier context.
-        """
-        if self.mock:
-            return self._mock_report(classification_result)
+        # if self.mock:
+        #     return self._mock_report(classification_result)
 
         try:
-            from PIL import Image
-
             image = Image.open(image_path).convert("RGB")
 
-            detected_class = classification_result.get("class", "Unknown")
-            confidence = classification_result.get("confidence", 0.0) * 100
+            cls = classification_result.get("class", "Unknown")
+            conf = classification_result.get("confidence", 0.0) * 100
 
             prompt = (
                 "You are a medical imaging assistant.\n\n"
-                f"The image was classified as '{detected_class}' "
-                f"with {confidence:.1f}% confidence.\n\n"
-                "Describe the visual features in the image that support this classification. "
-                "Mention relevant patterns, structures, or abnormalities, "
-                "and suggest appropriate next clinical steps.\n"
-                "Be concise and medically grounded."
+                f"The image was classified as '{cls}' with {conf:.1f}% confidence.\n"
+                "Describe visual features supporting this classification and "
+                "suggest next clinical steps."
             )
 
             with torch.no_grad():
                 enc_image = self.model.encode_image(image)
-
                 answer = self.model.answer_question(
                     enc_image,
                     prompt,
@@ -179,17 +175,14 @@ class VLMReporter:
             return answer.strip()
 
         except Exception as e:
-            print(f"[ERROR] VLM generation failed: {e}")
             return f"Error generating report: {e}"
 
     # ------------------------------------------------------------------
 
-    def _mock_report(self, classification_result: Dict) -> str:
-        cls = classification_result.get("class", "Unknown")
-        return (
-            f"[MOCK VLM REPORT]\n"
-            f"The image demonstrates visual patterns consistent with {cls}. "
-            "Observed tissue characteristics may warrant further histopathological "
-            "correlation and specialist review.\n\n"
-            "(Mock response – Vision-Language Model not loaded.)"
-        )
+    # def _mock_report(self, classification_result: Dict) -> str:
+    #     cls = classification_result.get("class", "Unknown")
+    #     return (
+    #         f"[MOCK REPORT]\n"
+    #         f"Image findings are consistent with {cls}. "
+    #         "Further clinical correlation is advised."
+    #     )
