@@ -1,18 +1,19 @@
 :root {
     /* New Color Palette */
-    --bg-color: #FAF3E1;         /* Light cream background */
-    --sidebar-bg: #F5E7C6;       /* Sidebar background */
-    --sidebar-text: #222222;     /* Sidebar text */
-    --chat-bg: #FAF3E1;          /* Main chat background */
-    --primary-color: #FA8112;    /* Buttons, highlights, accents */
-    --primary-hover: #FA6F00;    /* Slightly darker orange on hover */
-    --user-msg-bg: #FA8112;      /* User message bubbles */
-    --ai-msg-bg: #F5E7C6;        /* AI message bubbles */
-    --border-color: #FA8112;     /* Borders / dividers */
-    --text-primary: #222222;     /* Primary text */
-    --text-secondary: #555555;   /* Secondary / subtle text */
+    --bg-color: #FFF8DE;          /* Main background (cream/light yellow) */
+    --sidebar-bg: #576A8F;        /* Sidebar background (dark blue-gray) */
+    --sidebar-text: #FFF8DE;      /* Sidebar text (cream for contrast) */
+    --chat-bg: #FFF8DE;           /* Chat area background (same cream) */
+    --primary-color: #FF7444;     /* Buttons, highlights, accents (vibrant orange) */
+    --primary-hover: #E65C2B;     /* Darker orange on hover */
+    --user-msg-bg: #FF7444;       /* User message bubbles (orange) */
+    --ai-msg-bg: #B7BDF7;         /* AI message bubbles (light blue) */
+    --border-color: #576A8F;      /* Borders / dividers (dark blue-gray) */
+    --text-primary: #222222;      /* Primary text (dark for readability) */
+    --text-secondary: #555555;    /* Secondary text */
     --font-sans: 'Plus Jakarta Sans', sans-serif;
 }
+
 
 body {
     margin: 0;
