@@ -15,7 +15,7 @@ def git_push(commit_msg=None):
         subprocess.run(["git", "commit", "-m", commit_msg], check=True)
         
         # 3️⃣ git push
-        subprocess.run(["git", "push"], check=True)
+        subprocess.run(["git", "push", "origin", "master"], check=True)
         
         print("[✅] Changes pushed successfully!")
     except subprocess.CalledProcessError as e:
