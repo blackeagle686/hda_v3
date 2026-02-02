@@ -92,97 +92,118 @@ class LLMResponder:
 import torch
 from typing import Dict
 from PIL import Image
-from transformers import AutoModel, AutoTokenizer
-
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
+from qwen_vl_utils import process_vision_info
 
 class VLMReporter:
     def __init__(
         self,
-        model_id: str = "vikhyatk/moondream2",
-        revision: str = "2024-03-06",
+        model_id: str = "Qwen/Qwen2-VL-2B-Instruct",
         mock: bool = False
     ):
         self.mock = mock
         self.model = None
-        self.tokenizer = None
+        self.processor = None
 
         if self.mock:
             print("[INFO] VLM initialized in MOCK mode.")
             return
 
         try:
-            print(f"[INFO] Loading MoonDream VLM: {model_id}")
-
+            print(f"[INFO] Loading Qwen2-VL: {model_id}")
+            
+            # Qwen2-VL benefits from flash_attention_2 if available, but we'll stick to auto/default for stability
+            # We use float16 for GPU
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             dtype = torch.float16 if self.device == "cuda" else torch.float32
 
-            # ✅ IMPORTANT FIX: AutoModel NOT AutoModelForCausalLM
-            self.model = AutoModel.from_pretrained(
+            self.model = Qwen2VLForConditionalGeneration.from_pretrained(
                 model_id,
-                trust_remote_code=True,
-                revision=revision,
-                torch_dtype=dtype
-            ).to(self.device)
-
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_id,
-                revision=revision,
-                trust_remote_code=True
+                torch_dtype=dtype,
+                device_map="auto" if self.device == "cuda" else None
             )
+            
+            # If device_map not used (cpu), move manually
+            if self.device == "cpu":
+                self.model.to("cpu")
 
-            # 🔒 Hard validation
-            if not hasattr(self.model, "encode_image"):
-                raise RuntimeError("encode_image not found – wrong model class loaded")
-
-            if not hasattr(self.model, "answer_question"):
-                raise RuntimeError("answer_question not found – wrong model class loaded")
-
-            self.model.eval()
-
-            print("[INFO] MoonDream VLM loaded successfully")
+            self.processor = AutoProcessor.from_pretrained(model_id)
+            
+            print("[INFO] Qwen2-VL loaded successfully")
 
         except Exception as e:
             print(f"[WARN] VLM failed to load ({e}) → MOCK mode")
             self.mock = True
 
-    # ------------------------------------------------------------------
-
     def generate_report(self, image_path: str, classification_result: Dict) -> str:
-        # if self.mock:
-        #     return self._mock_report(classification_result)
+        if self.mock:
+            return self._mock_report(classification_result)
 
         try:
-            image = Image.open(image_path).convert("RGB")
-
+            # Prepare Image
+            # Qwen2-VL handles images via the processor/messages format
             cls = classification_result.get("class", "Unknown")
             conf = classification_result.get("confidence", 0.0) * 100
 
-            prompt = (
-                "You are a medical imaging assistant.\n\n"
-                f"The image was classified as '{cls}' with {conf:.1f}% confidence.\n"
-                "Describe visual features supporting this classification and "
-                "suggest next clinical steps."
+            prompt_text = (
+                f"The image detected as '{cls}' with {conf:.1f}% confidence. "
+                "Describe the visual features in the image that support this diagnosis "
+                "and explain what they might indicate physically. "
+                "Then suggest immediate next clinical steps."
             )
 
-            with torch.no_grad():
-                enc_image = self.model.encode_image(image)
-                answer = self.model.answer_question(
-                    enc_image,
-                    prompt,
-                    self.tokenizer
-                )
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "image": image_path,
+                        },
+                        {"type": "text", "text": prompt_text},
+                    ],
+                }
+            ]
 
-            return answer.strip()
+            # Process Inputs
+            text = self.processor.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+            
+            image_inputs, video_inputs = process_vision_info(messages)
+            
+            inputs = self.processor(
+                text=[text],
+                images=image_inputs,
+                videos=video_inputs,
+                padding=True,
+                return_tensors="pt",
+            )
+            
+            inputs = inputs.to(self.model.device)
+
+            # Generate
+            generated_ids = self.model.generate(**inputs, max_new_tokens=256)
+            
+            # Trim inputs from output
+            generated_ids_trimmed = [
+                out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+            ]
+            
+            output_text = self.processor.batch_decode(
+                generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            )
+
+            return output_text[0]
 
         except Exception as e:
-            return f"Error generating report: {e}"
+            print(f"[ERROR] VLM Generation Error: {e}")
+            return f"Error generating report: {str(e)}"
 
-    # ------------------------------------------------------------------
-
-    # def _mock_report(self, classification_result: Dict) -> str:
-    #     cls = classification_result.get("class", "Unknown")
-    #     return (
-    #         f"[MOCK REPORT]\n"
-    #         f"Image findings are consistent with {cls}. "
-    #         "Further clinical correlation is advised."
-    #     )
+    def _mock_report(self, classification_result: Dict) -> str:
+        cls = classification_result.get("class", "Unknown")
+        return (
+            f"[MOCK REPORT]\n"
+            f"Image findings are consistent with {cls}. "
+            "Further clinical correlation is advised."
+        )
