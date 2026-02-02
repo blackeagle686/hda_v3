@@ -3,6 +3,10 @@ const userInput = document.getElementById('user-input');
 const sendBtn = document.getElementById('send-btn');
 const imageUpload = document.getElementById('image-upload');
 
+// Generate Session ID (simple random string)
+const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+console.log("Session ID:", sessionId);
+
 let context = ""; // Store last diagnosis context
 
 // Auto-resize textarea
@@ -52,6 +56,7 @@ async function sendMessage() {
         const formData = new FormData();
         formData.append('message', text);
         formData.append('context', context);
+        formData.append('session_id', sessionId); // Send Session ID
 
         const response = await fetch('/api/chat', {
             method: 'POST',

@@ -22,8 +22,8 @@ class HDAPipeline:
             "advice": advice
         }
 
-    def chat(self, message: str, context: str = ""):
+    def chat(self, message: str, history: list = None, context: str = ""):
         """
         Pure text chat.
         """
-        return self.llm.generate_response(message, context)
+        return self.llm.generate_response(message, context, history)

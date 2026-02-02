@@ -36,7 +36,7 @@ class LLMResponder:
         else:
             print("[INFO] LLM initialized in MOCK mode.")
 
-    def generate_response(self, user_text: str, context: str = "") -> str:
+    def generate_response(self, user_text: str, context: str = "", history: list = None) -> str:
         """
         Generate a response given user text and optional medical context.
         """
@@ -44,20 +44,36 @@ class LLMResponder:
             return self._mock_response(user_text, context)
             
         # Prompt formatting for TinyLlama Chat
-        # <|system|>
-        # You are a helpful medical assistant.</s>
-        # <|user|>
-        # ...</s>
-        # <|assistant|>
+        # <|system|>...</s>
+        # <|user|>...</s>
+        # <|assistant|>...</s>
         
         system_prompt = "You are a helpful and empathetic AI medical assistant. You provide advice based on the analysis of medical images and user symptoms."
         
-        full_prompt = f"<|system|>\n{system_prompt}</s>\n<|user|>\nContext: {context}\n\nUser Question: {user_text}</s>\n<|assistant|>\n"
+        # Build history text
+        history_text = ""
+        if history:
+            for turn in history:
+                role = turn['role']
+                content = turn['content']
+                if role == 'user':
+                    history_text += f"<|user|>\n{content}</s>\n"
+                elif role == 'assistant':
+                    history_text += f"<|assistant|>\n{content}</s>\n"
+
+        full_prompt = f"<|system|>\n{system_prompt}</s>\n"
+        
+        # Add context if provided (as first user message or separate block)
+        if context:
+             full_prompt += f"<|user|>\nContext: {context}</s>\n"
+             
+        full_prompt += history_text
+        full_prompt += f"<|user|>\nUser Question: {user_text}</s>\n<|assistant|>\n"
         
         try:
             outputs = self.pipe(full_prompt, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
             generated_text = outputs[0]['generated_text']
-            # Extract only the assistant part
+            # Extract only the NEW assistant part
             response = generated_text.split("<|assistant|>\n")[-1].strip()
             return response
         except Exception as e:

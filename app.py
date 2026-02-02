@@ -31,10 +31,22 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def index():
     return FileResponse("templates/index.html")
 
+# Global in-memory chat history storage
+CHAT_HISTORY = {}
+
 @app.post("/api/chat")
-async def chat_endpoint(message: str = Form(...), context: str = Form("")):
+async def chat_endpoint(message: str = Form(...), context: str = Form(""), session_id: str = Form(...)):
     try:
-        response = pipeline.chat(message, context)
+        # Get history for this session
+        history = CHAT_HISTORY.get(session_id, [])
+        
+        response = pipeline.chat(message, history, context)
+        
+        # Update history
+        history.append({"role": "user", "content": message})
+        history.append({"role": "assistant", "content": response})
+        CHAT_HISTORY[session_id] = history
+        
         return JSONResponse({"response": response})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
