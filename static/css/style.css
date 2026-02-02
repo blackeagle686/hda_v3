@@ -338,7 +338,7 @@ textarea {
 }
 
 .attach-btn:hover {
-    background-color: #333;
+    background-color: var(--primary-hover);
     color: var(--text-primary);
 }
 
