@@ -12,3 +12,12 @@ einops
 qwen-vl-utils
 transformers>=4.45.0
 accelerate>=0.26.0
+
+# RAG Dependencies
+langchain
+langchain-community
+langchain-huggingface
+chromadb
+redis
+pypdf
+sentence-transformers
