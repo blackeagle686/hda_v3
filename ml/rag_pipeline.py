@@ -83,8 +83,13 @@ class MedicalRAG:
 
         # Add to Chroma
         print("[INFO] Adding to Vector Store...")
-        # Batching is handled by Chroma, but good to monitor
-        self.vector_store.add_documents(chunks)
+
+        batch_size = 5000   # أقل من الحد الأقصى
+        for i in range(0, len(chunks), batch_size):
+            batch = chunks[i:i + batch_size]
+            self.vector_store.add_documents(batch)
+            print(f"[INFO] Added batch {i//batch_size + 1}")
+
         print("[INFO] Ingestion Complete.")
 
     def search(self, query: str, k: int = 3) -> List[Document]:
