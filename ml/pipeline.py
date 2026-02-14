@@ -4,7 +4,7 @@ from .llm_pipeline import UnifiedQwen
 import os
 
 class HDAPipeline:
-    def __init__(self, model_path: str = None, mock_llm: bool = True, use_gemini: bool = False):
+    def __init__(self, model_path: str = None, mock_llm: bool = False, use_gemini: bool = False):
         # use_gemini is deprecated in v2 but kept for signature compatibility
         self.classifier = HDAImgClassifier(model_path=model_path)
         

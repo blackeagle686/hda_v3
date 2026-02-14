@@ -77,7 +77,7 @@ async function sendMessage() {
 
     // 1. Add User Message
     addMessage(text, 'user');
-    userInput.value = "";
+    userInput.value = "";   
     userInput.style.height = 'auto';
     sendBtn.disabled = true;
 

@@ -16,7 +16,7 @@ app = FastAPI(title="Health Data Analysis AI Assistant")
 
 # Configuration
 USE_GEMINI = os.getenv("USE_GEMINI", "True").lower() == "true"
-MOCK_LLM = os.getenv("MOCK_LLM", "False").lower() == "true"
+MOCK_LLM = True
 
 # Initialize Pipeline
 # In production/cloud, use Gemini to avoid local hardware constraints
