@@ -27,7 +27,7 @@ class LLMResponder:
                     model=model_name,
                     torch_dtype=dtype,
                     device=device,
-                    max_new_tokens=256
+                    max_new_tokens=1024 # TinyLlama max context is ~2048
                 )
                 print("[INFO] LLM Loaded successfully.")
             except Exception as e:
@@ -77,6 +77,8 @@ class LLMResponder:
             response = generated_text.split("<|assistant|>\n")[-1].strip()
             return response
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"[ERROR] LLM generation failed: {e}")
             return "I apologize, but I am having trouble generating a detailed response right now. Please consult a doctor."
 
@@ -199,7 +201,7 @@ class VLMReporter:
             inputs = inputs.to(self.model.device)
 
             # Generate
-            generated_ids = self.model.generate(**inputs, max_new_tokens=256)
+            generated_ids = self.model.generate(**inputs, max_new_tokens=4096)
             
             # Trim inputs from output
             generated_ids_trimmed = [
