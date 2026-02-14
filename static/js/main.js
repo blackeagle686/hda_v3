@@ -10,6 +10,61 @@ console.log("Session ID:", sessionId);
 // Context Memory (List of short summaries)
 let contextSummaries = [];
 let stagedImage = null;
+let selectionTooltip = null;
+
+// Initialize Tooltip on Load
+document.addEventListener('DOMContentLoaded', () => {
+    selectionTooltip = document.createElement('button');
+    selectionTooltip.className = 'selection-tooltip';
+    selectionTooltip.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Ask about this';
+    document.body.appendChild(selectionTooltip);
+
+    selectionTooltip.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // Prevent losing selection
+        askAboutSelection();
+    });
+});
+
+document.addEventListener('selectionchange', handleSelection);
+
+function handleSelection() {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+    const container = document.getElementById('messages-container');
+
+    if (text && text.length > 5 && container.contains(selection.anchorNode)) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        // Position tooltip above selection
+        selectionTooltip.style.left = `${rect.left + rect.width / 2}px`;
+        selectionTooltip.style.top = `${rect.top + window.scrollY - 40}px`;
+        selectionTooltip.style.transform = 'translateX(-50%)';
+        selectionTooltip.style.display = 'flex';
+        // Add a small fade-in
+        selectionTooltip.style.opacity = '1';
+    } else {
+        selectionTooltip.style.display = 'none';
+        selectionTooltip.style.opacity = '0';
+    }
+}
+
+function askAboutSelection() {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+    if (!text) return;
+
+    // Quote the text in the input area
+    userInput.value = `Regarding this part: "${text}"\n\nI wanted to ask: `;
+    userInput.style.height = 'auto';
+    userInput.style.height = userInput.scrollHeight + 'px';
+    userInput.focus();
+
+    // Clear selection and hide tooltip
+    selection.removeAllRanges();
+    selectionTooltip.style.display = 'none';
+    sendBtn.disabled = false;
+}
 
 // Theme Toggle Logic
 function toggleTheme() {
@@ -270,6 +325,21 @@ function addMessage(content, sender, isHtml = false) {
     const icon = sender === 'ai' ? '<i class="fa-solid fa-robot"></i>' : '<i class="fa-regular fa-user"></i>';
 
     let innerContent = isHtml ? content : `<p>${content}</p>`;
+
+    // Pattern detection for quoted context
+    if (!isHtml && content.startsWith('Regarding this part: "')) {
+        const parts = content.match(/Regarding this part: "([\s\S]*?)"\n\nI wanted to ask: ([\s\S]*)/);
+        if (parts) {
+            innerContent = `
+                <div class="quoted-context">
+                    <i class="fa-solid fa-quote-left" style="font-size:0.8rem; opacity:0.5; margin-right:8px"></i>
+                    ${parts[1]}
+                </div>
+                <p>${parts[2]}</p>
+            `;
+        }
+    }
+
     // If text messages from AI, parse markdown
     if (sender === 'ai' && !isHtml) {
         innerContent = marked.parse(content);

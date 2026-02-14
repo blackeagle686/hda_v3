@@ -579,3 +579,44 @@ textarea::placeholder {
 .typing-indicator i {
     color: var(--primary-color);
 }
+
+/* Selection Tooltip */
+.selection-tooltip {
+    position: absolute;
+    z-index: 1000;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+    user-select: none;
+    border: none;
+}
+
+.selection-tooltip:hover {
+    background-color: var(--primary-hover);
+    transform: scale(1.05) translateY(-2px);
+}
+
+.selection-tooltip i {
+    font-size: 0.9rem;
+}
+
+/* Highlight style for selected context in chat */
+.quoted-context {
+    border-left: 3px solid var(--primary-color);
+    background: rgba(59, 130, 246, 0.1);
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border-radius: 4px 12px 12px 4px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-style: italic;
+}
