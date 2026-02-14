@@ -77,15 +77,20 @@ class UnifiedQwen:
         if user_question:
             prompt_text = (
                 f"The image was classified as '{cls}' with {conf:.1f}% confidence. "
-                f"The user has a specific question: '{user_question}'. "
-                "Analyze the image features visible and answer the user's question professionaly. "
-                "Provide clinical advice and next steps."
+                f"The user has a specific question: '{user_question}'.\n\n"
+                "Please provide a **lengthy and extremely detailed clinical analysis** of this image. "
+                "1. **Visual Findings**: Describe specific medical features visible in the image that support the classification.\n"
+                "2. **Detailed Answer**: Provide a comprehensive and professional answer to the user's question based on clinical knowledge.\n"
+                "3. **Clinical Context**: Explain the implications of these findings for the patient.\n"
+                "4. **Recommendations**: List detailed next steps, tests, and professional medical advice.\n\n"
+                "Use well-structured markdown for the report."
             )
         else:
             prompt_text = (
-                f"The image was classified as '{cls}' with {conf:.1f}% confidence. "
-                "Analyze the image features visible that support this diagnosis. "
-                "Provide clinical advice and next steps."
+                f"The image was classified as '{cls}' with {conf:.1f}% confidence.\n\n"
+                "Please generate a **comprehensive, structured medical report**. "
+                "Include a detailed description of the radiological features, characteristic patterns of the identified disease, "
+                "and a thorough clinical recommendation section. The report should be professional and informative for healthcare providers."
             )
 
         messages = [
@@ -137,7 +142,7 @@ class UnifiedQwen:
         ]
 
         # 3. Generate Main Response
-        response_text = self._run_inference(messages, max_tokens=1024)
+        response_text = self._run_inference(messages, max_tokens=4096)
 
         # 4. Generate Short Summary for Memory (Safety wrapped to prevent response failure)
         try:
@@ -151,7 +156,7 @@ class UnifiedQwen:
             "summary": summary
         }
 
-    def _run_inference(self, messages, max_tokens=1024):
+    def _run_inference(self, messages, max_tokens=4096):
         """Helper to run model inference with stable decoding."""
         text = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
