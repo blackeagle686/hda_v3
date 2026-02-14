@@ -10,7 +10,11 @@ import uuid
 
 # Load environment variables
 load_dotenv()
-
+def _log_msg(msg, func_name): 
+    print(f'---------{func_name}-----------------')
+    print(msg)
+    print(f'----------{func_name}----------------')
+    
 # Initialize App
 app = FastAPI(title="Health Data Analysis AI Assistant")
 
@@ -58,14 +62,24 @@ async def chat_endpoint(
     session_id: str = Form(...)
 ):
     try:
+        _log_msg(f"user message: {message}\ncontext_summarise: {context_summaries}\nsessionID:{session_id}", func_name="endpoint of: /api/chat")
         # Parse context summaries
         summaries = json.loads(context_summaries)
+        _log_msg(f"load the jsong summarise: {summaries}",
+                 func_name="chat_endpint :: -> json.loads(context_summarise)")
         
         # RAG Retrieval
         rag_context = ""
         try:
             docs = rag_system.search(message)
+            
+            _log_msg(f"docs: {docs}", 
+                     func_name="chat_endpoint :: rag_system.search()")
+            
             rag_context = rag_system.format_context(docs)
+            
+            _log_msg(f"rag_context: {rag_context}", "rag_system.format_context(docs)")
+            
             if rag_context:
                 print(f"[INFO] RAG Context found: {len(docs)} docs")
         except Exception as e:
@@ -74,6 +88,7 @@ async def chat_endpoint(
         # Chat with Unified Qwen
         # Returns { "response": str, "summary": str }
         result = pipeline.chat(message, summaries, rag_context)
+        _log_msg(f"results: {result}" , "pipline.chat()")
         
         return JSONResponse(result)
     except Exception as e:
