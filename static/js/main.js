@@ -7,14 +7,15 @@ const imageUpload = document.getElementById('image-upload');
 const sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 console.log("Session ID:", sessionId);
 
-let context = ""; // Store last diagnosis context
+// Context Memory (List of short summaries)
+let contextSummaries = [];
 
 // Theme Toggle Logic
 function toggleTheme() {
     const html = document.documentElement;
     const currentTheme = html.getAttribute('data-theme');
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
+
     html.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
     updateThemeIcon(newTheme);
@@ -35,9 +36,6 @@ function updateThemeIcon(theme) {
 (function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
-    // Ensure icon matches state on load (need to wait for DOM or call in script at end of body)
-    // Since script is at end of body, we can call it.
-    // However, element might not be ready if script runs before DOM content loaded (unlikely here but safe to wait)
     document.addEventListener('DOMContentLoaded', () => {
         updateThemeIcon(savedTheme);
     });
@@ -89,8 +87,9 @@ async function sendMessage() {
     try {
         const formData = new FormData();
         formData.append('message', text);
-        formData.append('context', context);
-        formData.append('session_id', sessionId); // Send Session ID
+        // Send JSON string of summaries
+        formData.append('context_summaries', JSON.stringify(contextSummaries));
+        formData.append('session_id', sessionId);
 
         const response = await fetch('/api/chat', {
             method: 'POST',
@@ -102,8 +101,10 @@ async function sendMessage() {
         removeTypingIndicator(typingId);
         addMessage(data.response, 'ai');
 
-        if (data.history) {
-            // Optional: update history in sidebar if we were fetching it dynamically
+        // 4. Update Context Memory
+        if (data.summary) {
+            contextSummaries.push(data.summary);
+            console.log("Updated Context Summaries:", contextSummaries);
         }
 
     } catch (error) {
@@ -150,7 +151,7 @@ async function uploadImage(file) {
 
         removeTypingIndicator(typingId);
 
-        const safeId = data.original_url.replaceAll("/", "_"); // Just use original_url for ID generation if needed, or remove safeId if unused elsewhere. keeping it for ID uniqueness if useful.
+        const safeId = data.original_url.replaceAll("/", "_");
 
         const resultHtml = `
         <div class="result-card">
@@ -163,11 +164,17 @@ async function uploadImage(file) {
             </div>
 
             <hr>
-            <div class="markdown-body">${marked.parse(data.advice)}</div>
+            <div class="markdown-body">${marked.parse(data.response || data.advice)}</div>
         </div>
         `;
 
         addMessage(resultHtml, "ai", true);
+
+        // Update Context Memory from Image Analysis
+        if (data.summary) {
+            contextSummaries.push(data.summary);
+            console.log("Updated Context Summaries (Image):", contextSummaries);
+        }
 
     } catch (err) {
         removeTypingIndicator(typingId);

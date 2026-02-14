@@ -1,0 +1,64 @@
+Implementation Plan - HDA v2 RAG System
+The goal is to upgrade HDA to v2, a fully functional RAG system using Qwen2-VL-7B-Instruct as the unified model for both Vision and Text/Chat tasks, and implementing a token-efficient memory summarization mechanism.
+
+User Review Required
+IMPORTANT
+
+Unified Model Strategy: We will use Qwen/Qwen2-VL-7B-Instruct for both Image Analysis and Text Chat. This fulfills the request "we already has Qwen" and ensures high-quality, detailed reports.
+
+NOTE
+
+Context Memory: We will implement a "Simple Context Memory" where the model generates a very short summary (<10 tokens) after each response. This summary is stored in a JavaScript list on the client side and sent with each new prompt to maintain context without exceeding token limits.
+
+Proposed Changes
+1. Unified Model Integration (
+ml/llm_pipeline.py
+, 
+ml/pipeline.py
+)
+Clean Code Refactor: Remove 
+LLMResponder
+ (TinyLlama) and 
+GeminiResponder
+.
+Qwen Integration:
+Update 
+VLMReporter
+ to load Qwen/Qwen2-VL-7B-Instruct.
+Add a 
+chat
+ method to 
+VLMReporter
+ that accepts text prompts + context summaries.
+Ensure 
+generate_response
+ returns both the text response AND the short summary.
+2. RAG Workflow Refinement (
+app.py
+, 
+ml/rag_pipeline.py
+)
+Vector DB Query: Ensure rag_system.search is called for every user prompt.
+Workflow:
+User Prompt -> Vector DB (Search)
+Vector DB Docs + Client Documents (Summaries) -> Qwen 7B
+Qwen 7B -> Response + New Summary -> UI
+3. Context Memory (Frontend & Backend)
+Frontend (
+static/js/main.js
+):
+Maintain a contextSummaries list.
+Update 
+chat_endpoint
+ call to send context_summaries.
+On response, append the returned summary to contextSummaries.
+Backend (
+app.py
+):
+Update /api/chat to accept context_summaries.
+Pass these to the pipeline.
+Verification Plan
+Manual Verification (No Local Tests)
+Code Review: storage of summaries in JS list.
+Workflow Check: existing functionality of Qwen loading.
+Note: We will skip local execution tests as requested due to hardware constraints. Verification will be code-based and "dry run" logic checks.

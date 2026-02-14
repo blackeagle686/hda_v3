@@ -1,34 +1,33 @@
+from typing import List, Optional
 from .image_model import HDAImgClassifier
-from .llm_pipeline import LLMResponder, VLMReporter, GeminiResponder
+from .llm_pipeline import UnifiedQwen
 import os
 
 class HDAPipeline:
     def __init__(self, model_path: str = None, mock_llm: bool = True, use_gemini: bool = False):
-        # Initialize sub-components
-        # Note: We default mock_llm to True to prevent heavy downloads on local dev env
+        # use_gemini is deprecated in v2 but kept for signature compatibility
         self.classifier = HDAImgClassifier(model_path=model_path)
         
-        if use_gemini:
-            self.llm = GeminiResponder()
-        else:
-            self.llm = LLMResponder(mock=mock_llm)
-            
-        self.vlm = VLMReporter(mock=mock_llm)
+        # Unified Model (Vision + Chat)
+        self.qwen = UnifiedQwen(model_id="Qwen/Qwen2-VL-7B-Instruct", mock=mock_llm)
         
     def analyze_image(self, image_path: str):
+        # 1. Classification (CNN)
         classification = self.classifier.predict(image_path)
-        # expected: {"class": "Pneumonia", "confidence": 0.92}
-
-        # Generate advice using VLM which sees the image + classification context
-        advice = self.vlm.generate_report(image_path, classification)
+        
+        # 2. VLM Report (Qwen)
+        # Returns { "response": text, "summary": text }
+        report_data = self.qwen.generate_report(image_path, classification)
 
         return {
             "classification": classification,
-            "advice": advice
+            "advice": report_data["response"],
+            "summary": report_data["summary"]
         }
 
-    def chat(self, message: str, history: list = None, context: str = ""):
+    def chat(self, message: str, context_summaries: Optional[List[str]] = None, rag_context: str = ""):
         """
-        Pure text chat.
+        RAG Chat with Qwen.
         """
-        return self.llm.generate_response(message, context, history)
+        # Returns { "response": text, "summary": text }
+        return self.qwen.chat_with_rag(message, rag_context, context_summaries or [])
