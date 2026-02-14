@@ -21,10 +21,13 @@ class MedicalRAG:
         self.collection_name = collection_name
         
         # Initialize Embeddings
-        # using CPU by default for embeddings to save VRAM for the LLMs, 
-        # unless we have plenty of VRAM.
-        print(f"[INFO] Loading Embedding Model: {embedding_model}")
-        self.embedding_function = HuggingFaceEmbeddings(model_name=embedding_model)
+        # Use GPU if available for maximum performance on server
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"[INFO] Loading Embedding Model ({device}): {embedding_model}")
+        self.embedding_function = HuggingFaceEmbeddings(
+            model_name=embedding_model,
+            model_kwargs={'device': device}
+        )
         
         # Initialize Vector Store (ChromaDB)
         self.vector_store = Chroma(

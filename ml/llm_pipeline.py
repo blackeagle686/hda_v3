@@ -26,13 +26,24 @@ class UnifiedQwen:
             
             # Auto-detect device configuration
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            dtype = torch.float16 if self.device == "cuda" else torch.float32
+            
+            # Use bfloat16 for better stability on Ampere+ GPUs, otherwise float16
+            if self.device == "cuda":
+                capability = torch.cuda.get_device_capability()
+                if capability[0] >= 8:
+                    dtype = torch.bfloat16
+                    print("[INFO] Using torch.bfloat16 for Qwen 7B stability.")
+                else:
+                    dtype = torch.float16
+                    print("[INFO] Using torch.float16.")
+            else:
+                dtype = torch.float32
 
             self.model = Qwen2VLForConditionalGeneration.from_pretrained(
                 model_id,
                 torch_dtype=dtype,
                 device_map="auto" if self.device == "cuda" else None,
-                attn_implementation="eager" if self.device == "cuda" else "eager"
+                attn_implementation="eager" # Avoid potential flash_attn issues for now
             )
             
             if self.device == "cpu":
@@ -82,11 +93,6 @@ class UnifiedQwen:
     def chat_with_rag(self, user_text: str, rag_context: str, context_summaries: List[str]) -> Dict[str, str]:
         """
         Chat functionality with RAG and Memory Summaries.
-        
-        Args:
-            user_text: The user's current question.
-            rag_context: Retrieved documents from Vector DB.
-            context_summaries: List of short summaries from previous turns.
         """
         if self.mock:
             return self._mock_chat(user_text)
@@ -100,7 +106,8 @@ class UnifiedQwen:
         rag_block = f"Reference Medical Knowledge:\n{rag_context}\n\n" if rag_context else ""
         
         full_prompt = (
-            f"You are HDA, an expert medical AI. Use the context below to answer.\n\n"
+            "You are HDA, an expert medical AI assistant. Using the provided context and history, "
+            "provide accurate, professional, and helpful medical guidance.\n\n"
             f"{memory_block}"
             f"{rag_block}"
             f"User Question: {user_text}"
@@ -114,10 +121,14 @@ class UnifiedQwen:
         ]
 
         # 3. Generate Main Response
-        response_text = self._run_inference(messages)
+        response_text = self._run_inference(messages, max_tokens=1024)
 
-        # 4. Generate Short Summary for Memory
-        summary = self._generate_summary(response_text)
+        # 4. Generate Short Summary for Memory (Safety wrapped to prevent response failure)
+        try:
+            summary = self._generate_summary(response_text)
+        except Exception as e:
+            print(f"[WARN] Summary generation failed: {e}")
+            summary = "Context updated."
 
         return {
             "response": response_text,
@@ -125,7 +136,7 @@ class UnifiedQwen:
         }
 
     def _run_inference(self, messages, max_tokens=1024):
-        """Helper to run model inference."""
+        """Helper to run model inference with stable decoding."""
         text = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
@@ -142,10 +153,17 @@ class UnifiedQwen:
         
         inputs = inputs.to(self.model.device)
 
-        generated_ids = self.model.generate(**inputs, max_new_tokens=max_tokens)
+        # Stable generation settings
+        output_ids = self.model.generate(
+            **inputs, 
+            max_new_tokens=max_tokens,
+            do_sample=False, # Use greedy decoding for stability (prevents probability tensor errors)
+            num_beams=1,
+            repetition_penalty=1.1, # Prevent loops without extreme changes to distribution
+        )
         
         generated_ids_trimmed = [
-            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+            out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, output_ids)
         ]
         
         output_text = self.processor.batch_decode(
