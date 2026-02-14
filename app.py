@@ -34,9 +34,15 @@ pipeline = HDAPipeline(
     rag_system=rag_system
 )
 
+from ml.report_gen import ReportGenerator
+from fastapi import BackgroundTasks
+
 # Directories
 UPLOAD_DIR = "static/uploads"
+REPORTS_DIR = "static/reports"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
 LABEL_MAP = {
     'colon_aca': 'Colon Adenocarcinoma',
     'colon_n': 'Colon Normal',
@@ -68,8 +74,6 @@ async def chat_endpoint(
         _log_msg(f"user message: {message}\ncontext_summarise: {context_summaries}\nsessionID:{session_id}", func_name="endpoint of: /api/chat")
         # Parse context summaries
         summaries = json.loads(context_summaries)
-        _log_msg(f"load the jsong summarise: {summaries}",
-                 func_name="chat_endpint :: -> json.loads(context_summarise)")
         
         # RAG Retrieval
         rag_context = ""
@@ -93,6 +97,44 @@ async def chat_endpoint(
         
         return JSONResponse(result)
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def cleanup_file(path: str):
+    """Utility to delete a file after it has been sent."""
+    if os.path.exists(path):
+        os.remove(path)
+
+@app.post("/api/download-report")
+async def download_report_endpoint(
+    content: str = Form(...),
+    format: str = Form("pdf"),
+    background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    """
+    Generates and returns a downloadable report file.
+    """
+    unique_id = str(uuid.uuid4())
+    filename = f"hda_report_{unique_id}.{format}"
+    file_path = os.path.join(REPORTS_DIR, filename)
+
+    try:
+        if format == "pdf":
+            ReportGenerator.to_pdf(content, file_path)
+        elif format == "docx":
+            ReportGenerator.to_word(content, file_path)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid format")
+
+        # Cleanup file after response is sent
+        background_tasks.add_task(cleanup_file, file_path)
+        
+        return FileResponse(
+            file_path, 
+            filename=f"HDA_Medical_Report.{format}",
+            media_type="application/octet-stream"
+        )
+    except Exception as e:
+        print("DOWNLOAD ERROR:", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 

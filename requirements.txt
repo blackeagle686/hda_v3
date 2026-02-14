@@ -25,3 +25,5 @@ sentence-transformers
 google-generativeai
 python-dotenv
 bitsandbytes
+fpdf2
+python-docx
