@@ -64,9 +64,9 @@ class UnifiedQwen:
             print(f"[WARN] Failed to load Qwen ({e}). Switching to MOCK mode.")
             self.mock = True
 
-    def generate_report(self, image_path: str, classification_result: Dict) -> Dict[str, str]:
+    def generate_report(self, image_path: str, classification_result: Dict, user_question: str = "") -> Dict[str, str]:
         """
-        Generates a medical report + summary for a given image.
+        Generates a medical report + summary for a given image, taking an optional user question into account.
         """
         if self.mock:
             return self._mock_report(classification_result)
@@ -74,11 +74,19 @@ class UnifiedQwen:
         cls = classification_result.get("class", "Unknown")
         conf = classification_result.get("confidence", 0.0) * 100
 
-        prompt_text = (
-            f"The image was classified as '{cls}' with {conf:.1f}% confidence. "
-            "Analyze the image features visible that support this diagnosis. "
-            "Provide clinical advice and next steps."
-        )
+        if user_question:
+            prompt_text = (
+                f"The image was classified as '{cls}' with {conf:.1f}% confidence. "
+                f"The user has a specific question: '{user_question}'. "
+                "Analyze the image features visible and answer the user's question professionaly. "
+                "Provide clinical advice and next steps."
+            )
+        else:
+            prompt_text = (
+                f"The image was classified as '{cls}' with {conf:.1f}% confidence. "
+                "Analyze the image features visible that support this diagnosis. "
+                "Provide clinical advice and next steps."
+            )
 
         messages = [
             {

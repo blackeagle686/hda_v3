@@ -11,13 +11,13 @@ class HDAPipeline:
         # Unified Model (Vision + Chat)
         self.qwen = UnifiedQwen(model_id="Qwen/Qwen2-VL-7B-Instruct", mock=mock_llm)
         
-    def analyze_image(self, image_path: str):
+    def analyze_image(self, image_path: str, user_question: str = ""):
         # 1. Classification (CNN)
         classification = self.classifier.predict(image_path)
         
         # 2. VLM Report (Qwen)
         # Returns { "response": text, "summary": text }
-        report_data = self.qwen.generate_report(image_path, classification)
+        report_data = self.qwen.generate_report(image_path, classification, user_question)
 
         return {
             "classification": classification,

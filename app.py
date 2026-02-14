@@ -96,7 +96,10 @@ async def chat_endpoint(
 
 
 @app.post("/api/analyze")
-async def analyze_endpoint(file: UploadFile = File(...)):
+async def analyze_endpoint(
+    file: UploadFile = File(...),
+    message: str = Form("")
+):
     if not file.content_type.startswith("image/"):
         return JSONResponse(status_code=400, content={"error": "Invalid file type"})
 
@@ -109,7 +112,7 @@ async def analyze_endpoint(file: UploadFile = File(...)):
 
     try:
         # analyze_image returns { "classification": ..., "advice": ..., "summary": ... }
-        result = pipeline.analyze_image(file_path)
+        result = pipeline.analyze_image(file_path, message)
 
         mapped_class = LABEL_MAP.get(result["classification"]["class"], "Unknown")
         
