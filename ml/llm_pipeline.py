@@ -3,6 +3,7 @@ from typing import Dict, List
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
 import os
+from transformers import BitsAndBytesConfig
 
 class UnifiedQwen:
     def __init__(
@@ -27,30 +28,37 @@ class UnifiedQwen:
             # Auto-detect device configuration
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             
-            # Use bfloat16 for better stability on Ampere+ GPUs, otherwise float16
             if self.device == "cuda":
-                capability = torch.cuda.get_device_capability()
-                if capability[0] >= 8:
-                    dtype = torch.bfloat16
-                    print("[INFO] Using torch.bfloat16 for Qwen 7B stability.")
-                else:
-                    dtype = torch.float16
-                    print("[INFO] Using torch.float16.")
+                # 4-bit Quantization Config to save VRAM (15GB -> ~6GB)
+                quant_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_use_double_quant=True
+                )
+                print("[INFO] Using 4-bit quantization for VRAM optimization.")
+                
+                self.model = Qwen2VLForConditionalGeneration.from_pretrained(
+                    model_id,
+                    quantization_config=quant_config,
+                    device_map="auto",
+                    attn_implementation="eager"
+                )
             else:
-                dtype = torch.float32
-
-            self.model = Qwen2VLForConditionalGeneration.from_pretrained(
-                model_id,
-                torch_dtype=dtype,
-                device_map="auto" if self.device == "cuda" else None,
-                attn_implementation="eager" # Avoid potential flash_attn issues for now
-            )
+                self.model = Qwen2VLForConditionalGeneration.from_pretrained(
+                    model_id,
+                    torch_dtype=torch.float32,
+                    device_map=None
+                )
             
-            if self.device == "cpu":
-                self.model.to("cpu")
-
-            self.processor = AutoProcessor.from_pretrained(model_id)
-            print("[INFO] Unified Qwen loaded successfully.")
+            # Set image resolution limits to prevent VRAM spikes
+            # min_pixels = 256*256, max_pixels = 1280*28*28 (standard for medicine usually)
+            self.processor = AutoProcessor.from_pretrained(
+                model_id, 
+                min_pixels=256*28*28, 
+                max_pixels=512*28*28 
+            )
+            print("[INFO] Unified Qwen loaded successfully (Optimized).")
 
         except Exception as e:
             print(f"[WARN] Failed to load Qwen ({e}). Switching to MOCK mode.")
