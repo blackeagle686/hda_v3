@@ -32,7 +32,7 @@ class UnifiedQwen:
                 model_id,
                 torch_dtype=dtype,
                 device_map="auto" if self.device == "cuda" else None,
-                attn_implementation="flash_attention_2" if self.device == "cuda" else "eager"
+                attn_implementation="eager" if self.device == "cuda" else "eager"
             )
             
             if self.device == "cpu":
