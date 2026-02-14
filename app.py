@@ -73,15 +73,11 @@ async def chat_endpoint(
         
         # RAG Retrieval
         rag_context = ""
+        sources = []
         try:
             docs = rag_system.search(message)
-            
-            _log_msg(f"docs: {docs}", 
-                     func_name="chat_endpoint :: rag_system.search()")
-            
             rag_context = rag_system.format_context(docs)
-            
-            _log_msg(f"rag_context: {rag_context}", "rag_system.format_context(docs)")
+            sources = rag_system.get_sources(docs)
             
             if rag_context:
                 print(f"[INFO] RAG Context found: {len(docs)} docs")
@@ -89,9 +85,11 @@ async def chat_endpoint(
             print(f"[WARN] RAG search failed: {e}")
             
         # Chat with Unified Qwen
-        # Returns { "response": str, "summary": str }
         result = pipeline.chat(message, summaries, rag_context)
-        _log_msg(f"results: {result}" , "pipline.chat()")
+        
+        # Append sources to the response text
+        if sources:
+            result["response"] += "\n\n**Sources:**\n" + "\n".join([f"- {s}" for s in sources])
         
         return JSONResponse(result)
     except Exception as e:
@@ -114,18 +112,22 @@ async def analyze_endpoint(
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        # analyze_image returns { "classification": ..., "advice": ..., "summary": ... }
+        # analyze_image returns { "classification": ..., "advice": ..., "summary": ..., "sources": ... }
         result = pipeline.analyze_image(file_path, message)
 
         mapped_class = LABEL_MAP.get(result["classification"]["class"], "Unknown")
         
+        advice_text = result["advice"]
+        if result.get("sources"):
+            advice_text += "\n\n**Sources:**\n" + "\n".join([f"- {s}" for s in result["sources"]])
+
         return JSONResponse(
             content={
                 "classification": {
                     "class": mapped_class,
                     "confidence": float(result["classification"]["confidence"])
                 },
-                "response": result["advice"], # Frontend expects 'advice' mapped to response usually, but we'll use 'response' key for consistency if we change JS, or keep 'advice'
+                "response": advice_text,
                 "summary": result["summary"],
                 "original_url": f"/static/uploads/{unique_filename}",
             }

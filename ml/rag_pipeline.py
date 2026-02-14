@@ -119,6 +119,20 @@ class MedicalRAG:
         context = "\n\n".join([f"[Source: {d.metadata.get('source', 'Unknown')}]\n{d.page_content}" for d in docs])
         return context
 
+    def get_sources(self, docs: List[Document]) -> List[str]:
+        """
+        Extract unique source names from the metadata of retrieved documents.
+        """
+        sources = []
+        for d in docs:
+            src = d.metadata.get('source')
+            if src:
+                # Get just the filename if it's a path
+                base_src = str(os.path.basename(str(src)))
+                if base_src not in sources:
+                    sources.append(base_src)
+        return sources
+
 # Utilities for manual testing
 if __name__ == "__main__":
     rag = MedicalRAG()

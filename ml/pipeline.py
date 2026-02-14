@@ -18,11 +18,13 @@ class HDAPipeline:
         
         # 2. RAG Context (Search based on classification + user question)
         rag_context = ""
+        sources = []
         if self.rag:
             try:
                 search_query = f"{classification.get('class', '')} {user_question}".strip()
                 docs = self.rag.search(search_query)
                 rag_context = self.rag.format_context(docs)
+                sources = self.rag.get_sources(docs)
                 print(f"[INFO] Image Analysis RAG Context found: {len(docs)} docs")
             except Exception as e:
                 print(f"[WARN] RAG search during image analysis failed: {e}")
@@ -34,7 +36,8 @@ class HDAPipeline:
         return {
             "classification": classification,
             "advice": report_data["response"],
-            "summary": report_data["summary"]
+            "summary": report_data["summary"],
+            "sources": sources
         }
 
     def chat(self, message: str, context_summaries: Optional[List[str]] = None, rag_context: str = ""):
