@@ -1,4 +1,5 @@
 import os
+import torch
 import redis
 import chromadb
 from typing import List, Dict, Any
