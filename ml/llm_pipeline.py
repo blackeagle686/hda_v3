@@ -64,9 +64,10 @@ class UnifiedQwen:
             print(f"[WARN] Failed to load Qwen ({e}). Switching to MOCK mode.")
             self.mock = True
 
-    def generate_report(self, image_path: str, classification_result: Dict, user_question: str = "") -> Dict[str, str]:
+    def generate_report(self, image_path: str, classification_result: Dict, user_question: str = "", rag_context: str = "") -> Dict[str, str]:
         """
-        Generates a medical report + summary for a given image, taking an optional user question into account.
+        Generates a comprehensive medical report + summary for a given image, 
+        incorporating RAG context and optional user questions.
         """
         if self.mock:
             return self._mock_report(classification_result)
@@ -74,23 +75,36 @@ class UnifiedQwen:
         cls = classification_result.get("class", "Unknown")
         conf = classification_result.get("confidence", 0.0) * 100
 
+        # Build a very detailed and expert prompt
+        rag_block = f"### Reference Medical Knowledge (RAG):\n{rag_context}\n\n" if rag_context else ""
+        
         if user_question:
             prompt_text = (
-                f"The image was classified as '{cls}' with {conf:.1f}% confidence. "
-                f"The user has a specific question: '{user_question}'.\n\n"
-                "Please provide a **lengthy and extremely detailed clinical analysis** of this image. "
-                "1. **Visual Findings**: Describe specific medical features visible in the image that support the classification.\n"
-                "2. **Detailed Answer**: Provide a comprehensive and professional answer to the user's question based on clinical knowledge.\n"
-                "3. **Clinical Context**: Explain the implications of these findings for the patient.\n"
-                "4. **Recommendations**: List detailed next steps, tests, and professional medical advice.\n\n"
-                "Use well-structured markdown for the report."
+                f"You are HDA, an expert medical AI assistant specialized in pathology and radiology.\n\n"
+                f"**Initial Findings**: The image was classified as '{cls}' with {conf:.1f}% confidence.\n"
+                f"**User Specific Query**: '{user_question}'\n\n"
+                f"{rag_block}"
+                "### Detailed Instructions:\n"
+                "Please provide an **exhaustive and high-quality clinical report**. Your response should be significantly long and detailed, covering:\n"
+                "1. **Radiological & Histological Analysis**: Describe specifically what features in the image (patterns, cell structures, anomalies) correspond to the detected class.\n"
+                "2. **Direct Answer to User**: Address the user's specific question with clinical depth.\n"
+                "3. **Differential Diagnosis & Correlation**: Correlate the visual findings with the 'Reference Medical Knowledge' provided above.\n"
+                "4. **Clinical Path forward**: Provide a structured plan for further testing (e.g., immunohistochemistry, specific CT protocols, genomic markers) and general patient management advice.\n"
+                "5. **Explanatory Context**: Explain 'why' these findings matter in the context of the identified condition.\n\n"
+                "**Format**: Use professional medical terminology and clear Markdown formatting (headers, bold text, bullet points)."
             )
         else:
             prompt_text = (
-                f"The image was classified as '{cls}' with {conf:.1f}% confidence.\n\n"
-                "Please generate a **comprehensive, structured medical report**. "
-                "Include a detailed description of the radiological features, characteristic patterns of the identified disease, "
-                "and a thorough clinical recommendation section. The report should be professional and informative for healthcare providers."
+                f"You are HDA, an expert medical AI assistant specialized in pathology and radiology.\n\n"
+                f"**Initial Findings**: The image was classified as '{cls}' with {conf:.1f}% confidence.\n\n"
+                f"{rag_block}"
+                "### Task: Generate a Comprehensive Medical Analysis Report\n"
+                "Generate a **lengthy and exhaustive professional report**. The report must include:\n"
+                "- **Detailed Morphology**: An analysis of the features shown in the image that support the diagnosis.\n"
+                "- **Clinical Synthesis**: Synthesize the visual evidence with the 'Reference Medical Knowledge' provided.\n"
+                "- **Diagnostic Implications**: Discuss the typical progression and characteristics of this finding.\n"
+                "- **Expert Recommendations**: Provide a detailed list of clinical next steps, necessary follow-up imaging, and expert advice for the healthcare team.\n\n"
+                "**Style**: Professional, structured, and clinically thorough. Ensure the report is long and detailed."
             )
 
         messages = [
@@ -103,7 +117,7 @@ class UnifiedQwen:
             }
         ]
 
-        response_text = self._run_inference(messages)
+        response_text = self._run_inference(messages, max_tokens=4096)
         summary = self._generate_summary(response_text)
 
         return {

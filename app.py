@@ -22,14 +22,17 @@ app = FastAPI(title="Health Data Analysis AI Assistant")
 USE_GEMINI = os.getenv("USE_GEMINI", "True").lower() == "true"
 MOCK_LLM = False
 
+# Initialize RAG System
+rag_system = MedicalRAG() 
+
 # Initialize Pipeline
 # In production/cloud, use Gemini to avoid local hardware constraints
 pipeline = HDAPipeline(
     model_path="checkpoints/best_model.pth", 
     mock_llm=MOCK_LLM,
-    use_gemini=USE_GEMINI
+    use_gemini=USE_GEMINI,
+    rag_system=rag_system
 )
-rag_system = MedicalRAG() # Initialize RAG System
 
 # Directories
 UPLOAD_DIR = "static/uploads"
