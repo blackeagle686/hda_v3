@@ -1,7 +1,7 @@
-from transformers import pipeline
 import torch
 import os
-from typing import Dict
+from typing import Dict, List
+import google.generativeai as genai
 
 class LLMResponder:
     def __init__(self, model_name: str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0", mock: bool = False):
@@ -36,7 +36,7 @@ class LLMResponder:
         else:
             print("[INFO] LLM initialized in MOCK mode.")
 
-    def generate_response(self, user_text: str, context: str = "", history: list = None) -> str:
+    def generate_response(self, user_text: str, context: str = "", history: List[Dict[str, str]] = None) -> str:
         """
         Generate a response given user text and optional medical context.
         """
@@ -71,7 +71,14 @@ class LLMResponder:
         full_prompt += f"<|user|>\nUser Question: {user_text}</s>\n<|assistant|>\n"
         
         try:
-            outputs = self.pipe(full_prompt, do_sample=True, temperature=0.7, top_k=50, top_p=0.95)
+            # Shift to more deterministic output to prevent "my my my" loops on low-resource hardware
+            outputs = self.pipe(
+                full_prompt, 
+                do_sample=False, # Use greedy decoding for stability
+                num_beams=1,
+                repetition_penalty=1.2,
+                no_repeat_ngram_size=3
+            )
             generated_text = outputs[0]['generated_text']
             # Extract only the NEW assistant part
             response = generated_text.split("<|assistant|>\n")[-1].strip()
@@ -106,6 +113,49 @@ class LLMResponder:
                 "I am ready to help you. Please upload a medical image or ask a specific question. "
                 f"(You said: {user_text})"
             )
+
+class GeminiResponder:
+    def __init__(self, model_name: str = "gemini-1.5-flash"):
+        """
+        Initialize the Gemini Responder (Free Tier).
+        """
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.model_name = model_name
+        
+        if not self.api_key:
+            print("[WARN] GEMINI_API_KEY NOT FOUND in environment. Falling back to mock or local LLM.")
+            self.model = None
+        else:
+            print(f"[INFO] Initializing Gemini API: {model_name}...")
+            genai.configure(api_key=self.api_key)
+            self.model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction="You are a professional medical AI assistant. Provide concise, accurate, and empathetic medical advice. Always suggest clinical follow-up for serious findings."
+            )
+
+    def generate_response(self, user_text: str, context: str = "", history: List[Dict[str, str]] = None) -> str:
+        if not self.model:
+            return "Gemini API is not configured. Please add GEMINI_API_KEY to your .env file."
+
+        # Convert history format for Gemini
+        chat_session = self.model.start_chat(history=[])
+        
+        # We'll build the prompt with context
+        prompt_with_context = f"Medical Context: {context}\n\nUser Question: {user_text}"
+        
+        try:
+            # If history exists, we should ideally populate the chat_session
+            # But for simplicity and to avoid token bloat in free tier, we'll pass recent history in prompt or as turns
+            if history:
+                 # Minimalist history integration
+                 history_str = "\n".join([f"{h['role']}: {h['content']}" for h in history[-4:]])
+                 prompt_with_context = f"Previous Conversation:\n{history_str}\n\n{prompt_with_context}"
+
+            response = self.model.generate_content(prompt_with_context)
+            return response.text.strip()
+        except Exception as e:
+            print(f"[ERROR] Gemini API Error: {e}")
+            return "I am currently having trouble connecting to the cloud medical brain. Please try again or consult a professional."
 
 import torch
 from typing import Dict

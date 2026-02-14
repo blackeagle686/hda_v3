@@ -96,9 +96,17 @@ class MedicalRAG:
         """
         Retrieve relevant documents for a query.
         """
+        if not self.vector_store:
+            print("[WARN] Vector store not initialized.")
+            return []
+            
         print(f"[INFO] Searching for: {query}")
-        results = self.vector_store.similarity_search(query, k=k)
-        return results
+        try:
+            results = self.vector_store.similarity_search(query, k=k)
+            return results
+        except Exception as e:
+            print(f"[ERROR] RAG search failed: {e}")
+            return []
 
     def format_context(self, docs: List[Document]) -> str:
         """

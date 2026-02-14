@@ -21,3 +21,6 @@ chromadb
 redis
 pypdf
 sentence-transformers
+# Gemini API & Env
+google-generativeai
+python-dotenv

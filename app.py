@@ -4,15 +4,27 @@ from fastapi.staticfiles import StaticFiles
 from ml.pipeline import HDAPipeline
 from ml.rag_pipeline import MedicalRAG
 import shutil
+from dotenv import load_dotenv
 import os
 import uuid
+
+# Load environment variables
+load_dotenv()
 
 # Initialize App
 app = FastAPI(title="Health Data Analysis AI Assistant")
 
-# Initialize Pipeline (Mock by default for local dev)
-# In production, set mock_llm=False and provide model_path
-pipeline = HDAPipeline(model_path="checkpoints/best_model.pth", mock_llm=False)
+# Configuration
+USE_GEMINI = os.getenv("USE_GEMINI", "True").lower() == "true"
+MOCK_LLM = os.getenv("MOCK_LLM", "False").lower() == "true"
+
+# Initialize Pipeline
+# In production/cloud, use Gemini to avoid local hardware constraints
+pipeline = HDAPipeline(
+    model_path="checkpoints/best_model.pth", 
+    mock_llm=MOCK_LLM,
+    use_gemini=USE_GEMINI
+)
 rag_system = MedicalRAG() # Initialize RAG System
 
 # Directories

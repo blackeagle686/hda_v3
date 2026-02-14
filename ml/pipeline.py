@@ -1,13 +1,18 @@
 from .image_model import HDAImgClassifier
-from .llm_pipeline import LLMResponder, VLMReporter
+from .llm_pipeline import LLMResponder, VLMReporter, GeminiResponder
 import os
 
 class HDAPipeline:
-    def __init__(self, model_path: str = None, mock_llm: bool = True):
+    def __init__(self, model_path: str = None, mock_llm: bool = True, use_gemini: bool = False):
         # Initialize sub-components
         # Note: We default mock_llm to True to prevent heavy downloads on local dev env
         self.classifier = HDAImgClassifier(model_path=model_path)
-        self.llm = LLMResponder(mock=mock_llm)
+        
+        if use_gemini:
+            self.llm = GeminiResponder()
+        else:
+            self.llm = LLMResponder(mock=mock_llm)
+            
         self.vlm = VLMReporter(mock=mock_llm)
         
     def analyze_image(self, image_path: str):
