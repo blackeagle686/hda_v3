@@ -9,6 +9,40 @@ console.log("Session ID:", sessionId);
 
 let context = ""; // Store last diagnosis context
 
+// Theme Toggle Logic
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    html.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('theme-icon');
+    if (theme === 'light') {
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+    } else {
+        icon.classList.remove('fa-moon');
+        icon.classList.add('fa-sun');
+    }
+}
+
+// Initialize Theme
+(function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    // Ensure icon matches state on load (need to wait for DOM or call in script at end of body)
+    // Since script is at end of body, we can call it.
+    // However, element might not be ready if script runs before DOM content loaded (unlikely here but safe to wait)
+    document.addEventListener('DOMContentLoaded', () => {
+        updateThemeIcon(savedTheme);
+    });
+})();
+
 // Auto-resize textarea
 userInput.addEventListener('input', function () {
     this.style.height = 'auto';
