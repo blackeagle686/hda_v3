@@ -25,21 +25,35 @@ The **Health Data Analysis (HDA) AI Assistant** is designed to empower medical p
 
 ## 🛠 Tech Stack
 
-### AI & Machine Learning
--   **Vision**: `EfficientNet-B0` (Classification), `Qwen2-VL` (Vision-Language Analysis).
--   **NLP/LLM**: `TinyLlama-1.1B`, `Google Gemini API` (Optional/Cloud).
--   **RAG**: `LangChain`, `ChromaDB`, `HuggingFace Embeddings`.
--   **Frameworks**: `PyTorch`, `Transformers`, `Accelerate`.
+### 🤖 AI & Machine Learning
 
-### Backend & Deployment
--   **Framework**: `FastAPI` (Asynchronous handling).
--   **Server**: `Uvicorn`.
--   **Document Gen**: `fpdf2`, `python-docx`.
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![Transformers](https://img.shields.io/badge/HuggingFace-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)
+![LangChain](https://img.shields.io/badge/LangChain-121212?style=for-the-badge)
+![ChromaDB](https://img.shields.io/badge/ChromaDB-5A5AFA?style=for-the-badge)
+![PyTorch](https://img.shields.io/badge/Accelerate-FF6F00?style=for-the-badge)
 
-### Frontend
--   **Interface**: Modern HTML5/CSS3 with vanilla JavaScript.
--   **Animations**: Smooth transitions and interactive dashboard.
+Vision:
+EfficientNet-B0 • Qwen2-VL
 
+LLM:
+TinyLlama • Google Gemini
+
+---
+
+### 🏗 Backend & Deployment
+
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Uvicorn](https://img.shields.io/badge/Uvicorn-499848?style=for-the-badge)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+
+---
+
+### 🎨 Frontend
+
+![HTML](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ---
 
 ## 🏗 Architecture Flow
